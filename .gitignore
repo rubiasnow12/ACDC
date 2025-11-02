@@ -5,9 +5,10 @@ build/
 dist/
 wheels/
 *.egg-info
-Cardiac_Segmentation_ACDC/ACDC
+Cardiac_Segmentation_ACDC/ACDC/
 # Virtual environments
 .venv
 
 *.zip
 .python-version
+unet/
