@@ -1,0 +1,69 @@
+# --- Project Configuration ---
+seed: 42
+
+# --- Data Configuration ---
+data_root: "data/raw/ACDC/database/training"
+splits_file: "data/splits.pkl"
+
+split_ratios:
+  train: 0.8
+  val: 0.1
+  test: 0.1
+
+data:
+  root: "data/raw/ACDC/database/training"   # 按实际路径调整
+  splits: "data/splits.pkl"
+
+preprocess:
+  target_spacing: [1.37, 1.37]   # 2D 任务可只设置 XY spacing；3D 可设置 [x,y,z]
+  crop_method: "center"          # "center" 或 "random"
+  crop_size_2d: [256, 256]
+  crop_size_3d: [128, 128, 128]
+
+dataloader:
+  batch_size: 8
+  val_batch_size: 4
+  num_workers: 4
+  pin_memory: true
+
+training:
+  device: "cuda"
+  amp: true
+  epochs: 100
+  lr: 1e-3
+
+input_size:
+  unet: [256, 256]
+  nnunet: [128, 128, 128]
+
+augmentation:
+  enabled: true
+  techniques:
+    - random_flip
+    - random_rotation
+    - random_crop
+
+optimizer:
+  type: "AdamW"
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  scheduler:
+    type: "CosineLR"
+    warmup_epochs: 5
+
+uncertainty_estimation:
+  enabled: true
+  methods:
+    - mc_dropout
+    - deep_ensemble
+    - aleatoric
+
+logging:
+  tensorboard: true
+  wandb: true
+
+output:
+  probs_dir: "outputs/probs"
+  masks_dir: "outputs/masks"
+  vis_dir: "outputs/vis"
+  unc_dir: "outputs/unc"
