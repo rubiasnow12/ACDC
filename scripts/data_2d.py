@@ -93,117 +93,118 @@ tar_shape = [352, 352]
 crop_shape = [224, 224]
 
 
-def train_loader_ACDC(train_index, data_path=r"E:\mssb\project\Cardiac_Segmentation_ACDC\ACDC\database\training", transform=None):
+def train_loader_ACDC(train_index, data_path=r"E:\mssb\project\data\raw\ACDC\database\training", transform=None):
     train_loader = ACDC_2D(source=data_path, Transform=transform, ind=train_index)
     return train_loader
 
 
-def val_loader_ACDC(val_index, data_path=r"E:\mssb\project\Cardiac_Segmentation_ACDC\ACDC\database\training", transform=None):
+def val_loader_ACDC(val_index, data_path=r"E:\mssb\project\data\raw\ACDC\database\training", transform=None):
     val_loader = ACDC_2D(source=data_path, Transform=transform, ind=val_index)
     return val_loader
 
 
-def test_loader_ACDC(test_index, data_path=r"E:\mssb\project\Cardiac_Segmentation_ACDC\ACDC\database\testing", transform=None):
+def test_loader_ACDC(test_index, data_path=r"E:\mssb\project\data\raw\ACDC\database\testing", transform=None):
     test_loader = ACDC_2D(source=data_path, Transform=transform, ind=test_index)
     return test_loader
 
-
-""" To test if the dataloader works """
-
-train_compose = mt.Compose(
-    [mt.SpatialPadD(keys=["image", "mask"], spatial_size=tar_shape, mode="edge"),
-     mt.RandSpatialCropD(keys=["image", "mask"], roi_size=crop_shape, random_center=True, random_size=False),
-     # mt.RandZoomd(
-     #     keys=["image", "mask"],
-     #     min_zoom=0.9,
-     #     max_zoom=1.2,
-     #     mode=("bilinear", "nearest"),
-     #     align_corners=(True, None),
-     #     prob=1,
-     # ),
-     # mt.Rand2DElasticD(
-     #     keys=["image", "mask"],
-     #     prob=1,
-     #     spacing=(50, 50),
-     #     magnitude_range=(1, 3),
-     #     rotate_range=(np.pi / 4,),
-     #     scale_range=(0.1, 0.1),
-     #     translate_range=(10, 10),
-     #     padding_mode="border",
-     # ),
-     # mt.RandScaleIntensityd(keys=["image"], factors=0.3, prob=1),
-     # mt.RandFlipd(["image", "mask"], spatial_axis=[0], prob=1),
-     # mt.RandFlipd(["image", "mask"], spatial_axis=[1], prob=1),
-     # mt.RandRotateD(keys=["image", "mask"], range_x=np.pi / 4, range_y=np.pi / 4, range_z=0.0, prob=1,
-     #                keep_size=True, mode=("nearest", "nearest"), align_corners=False),
-     # mt.RandRotate90D(keys=["image", "mask"], prob=1, spatial_axes=(0, 1)),
-     # mt.RandGaussianNoiseD(keys=["image"], prob=1, std=0.01),
-     mt.ToTensorD(keys=["image", "mask"], allow_missing_keys=False),
-     # mt.RandKSpaceSpikeNoiseD(keys=["image"], prob=1, intensity_range=(5.0, 7.5)),
-     ]
-)
-
-val_compose = mt.Compose(
-    [
-        mt.ToTensorD(keys=["image", "mask"], allow_missing_keys=False),
-    ]
-)
-
-test_compose = mt.Compose(
-    [
-        mt.DivisiblePadD(keys=["image", "mask"], k=(16, 16), mode="edge"),
-        mt.ToTensorD(keys=["image", "mask"], allow_missing_keys=False),
-    ]
-)
-
-splits = KFold(n_splits=5, shuffle=True, random_state=4)
-
-concatenated_dataset = train_loader_ACDC(transform=None, train_index=None)
-
-for fold, (train_idx, val_idx) in enumerate(splits.split(np.arange(len(concatenated_dataset)))):
-
-    print("--------------------------", "Fold", fold + 1, "--------------------------")
-
-    # training dataset
-    training_data = DataLoader(train_loader_ACDC(transform=train_compose, train_index=train_idx), batch_size=5,
-                               shuffle=True)
-    print("train from here")
-    for dic in training_data:
-        images = dic["image"]
-        masks = dic["mask"]
-        # print(images.shape, masks.shape)
-        # image, label = dic["image"], dic["mask"]
-        # plt.figure("visualise", (8, 4))
-        # plt.subplot(1, 2, 1)
-        # plt.title("image")
-        # plt.imshow(image[0, 0, :, :], cmap="gray")
-        # plt.subplot(1, 2, 2)
-        # plt.title("mask")
-        # plt.imshow(label[0, 0, :, :], cmap="gray")
-        # plt.show()
-
-    # validation dataset
-    validation_data = DataLoader(val_loader_ACDC(transform=val_compose, val_index=val_idx), batch_size=1,
-                                 shuffle=False)
-    print("val from here")
-    for dic in validation_data:
-        images = dic["image"]
-        masks = dic["mask"]
-        # print(images.shape, masks.shape)
-        # image, label = dic["image"], dic["mask"]
-        # plt.figure("visualise", (8, 4))
-        # plt.subplot(1, 2, 1)
-        # plt.title("image")
-        # plt.imshow(image[0, 0, :, :], cmap="gray")
-        # plt.subplot(1, 2, 2)
-        # plt.title("mask")
-        # plt.imshow(label[0, 0, :, :], cmap="gray")
-        # plt.show()
-
-    # test dataset
-    test_data = DataLoader(test_loader_ACDC(transform=test_compose, test_index=None), batch_size=1, shuffle=False)
-    print("test from here")
-    for dic in test_data:
-        images = dic["image"]
-        masks = dic["mask"]
-        print(images.shape, masks.shape)
+""" 将以下所有测试代码缩进到这个判断语句下 """
+if __name__ == "__main__":
+    """ To test if the dataloader works """
+    
+    train_compose = mt.Compose(
+        [mt.SpatialPadD(keys=["image", "mask"], spatial_size=tar_shape, mode="edge"),
+         mt.RandSpatialCropD(keys=["image", "mask"], roi_size=crop_shape, random_center=True, random_size=False),
+         # mt.RandZoomd(
+         #     keys=["image", "mask"],
+         #     min_zoom=0.9,
+         #     max_zoom=1.2,
+         #     mode=("bilinear", "nearest"),
+         #     align_corners=(True, None),
+         #     prob=1,
+         # ),
+         # mt.Rand2DElasticD(
+         #     keys=["image", "mask"],
+         #     prob=1,
+         #     spacing=(50, 50),
+         #     magnitude_range=(1, 3),
+         #     rotate_range=(np.pi / 4,),
+         #     scale_range=(0.1, 0.1),
+         #     translate_range=(10, 10),
+         #     padding_mode="border",
+         # ),
+         # mt.RandScaleIntensityd(keys=["image"], factors=0.3, prob=1),
+         # mt.RandFlipd(["image", "mask"], spatial_axis=[0], prob=1),
+         # mt.RandFlipd(["image", "mask"], spatial_axis=[1], prob=1),
+         # mt.RandRotateD(keys=["image", "mask"], range_x=np.pi / 4, range_y=np.pi / 4, range_z=0.0, prob=1,
+         #                keep_size=True, mode=("nearest", "nearest"), align_corners=False),
+         # mt.RandRotate90D(keys=["image", "mask"], prob=1, spatial_axes=(0, 1)),
+         # mt.RandGaussianNoiseD(keys=["image"], prob=1, std=0.01),
+         mt.ToTensorD(keys=["image", "mask"], allow_missing_keys=False),
+         # mt.RandKSpaceSpikeNoiseD(keys=["image"], prob=1, intensity_range=(5.0, 7.5)),
+         ]
+    )
+    
+    val_compose = mt.Compose(
+        [
+            mt.ToTensorD(keys=["image", "mask"], allow_missing_keys=False),
+        ]
+    )
+    
+    test_compose = mt.Compose(
+        [
+            mt.DivisiblePadD(keys=["image", "mask"], k=(16, 16), mode="edge"),
+            mt.ToTensorD(keys=["image", "mask"], allow_missing_keys=False),
+        ]
+    )
+    
+    splits = KFold(n_splits=5, shuffle=True, random_state=4)
+    
+    concatenated_dataset = train_loader_ACDC(transform=None, train_index=None)
+    
+    for fold, (train_idx, val_idx) in enumerate(splits.split(np.arange(len(concatenated_dataset)))):
+    
+        print("--------------------------", "Fold", fold + 1, "--------------------------")
+    
+        # training dataset
+        training_data = DataLoader(train_loader_ACDC(transform=train_compose, train_index=train_idx), batch_size=5,
+                                   shuffle=True)
+        print("train from here")
+        for dic in training_data:
+            images = dic["image"]
+            masks = dic["mask"]
+            # print(images.shape, masks.shape)
+            # image, label = dic["image"], dic["mask"]
+            # plt.figure("visualise", (8, 4))
+            # plt.subplot(1, 2, 1)
+            # plt.title("image")
+            # plt.imshow(image[0, 0, :, :], cmap="gray")
+            # plt.subplot(1, 2, 2)
+            # plt.title("mask")
+            # plt.imshow(label[0, 0, :, :], cmap="gray")
+            # plt.show()
+    
+        # validation dataset
+        validation_data = DataLoader(val_loader_ACDC(transform=val_compose, val_index=val_idx), batch_size=1,
+                                     shuffle=False)
+        print("val from here")
+        for dic in validation_data:
+            images = dic["image"]
+            masks = dic["mask"]
+            # print(images.shape, masks.shape)
+            # image, label = dic["image"], dic["mask"]
+            # plt.figure("visualise", (8, 4))
+            # plt.subplot(1, 2, 1)
+            # plt.title("image")
+            # plt.imshow(image[0, 0, :, :], cmap="gray")
+            # plt.subplot(1, 2, 2)
+            # plt.title("mask")
+            # plt.imshow(label[0, 0, :, :], cmap="gray")
+            # plt.show()
+    
+        # test dataset
+        test_data = DataLoader(test_loader_ACDC(transform=test_compose, test_index=None), batch_size=1, shuffle=False)
+        print("test from here")
+        for dic in test_data:
+            images = dic["image"]
+            masks = dic["mask"]
+            print(images.shape, masks.shape)

@@ -1,0 +1,40 @@
+{
+  "os": "Windows-10-10.0.26220-SP0",
+  "python": "CPython 3.9.21",
+  "startedAt": "2025-11-24T12:55:28.637194Z",
+  "program": "E:\\mssb\\project\\scripts\\train_2d.py",
+  "codePath": "scripts\\train_2d.py",
+  "codePathLocal": "scripts\\train_2d.py",
+  "git": {
+    "remote": "https://github.com/rubiasnow12/ACDC.git",
+    "commit": "b504c25830e5403e61f0d1a5c543a57075aa32b9"
+  },
+  "email": "2534172@tongji.edu.cn",
+  "root": "E:\\mssb\\project",
+  "host": "DESKTOP-EEEEIBT",
+  "executable": "E:\\mssb\\project\\.venv\\Scripts\\python.exe",
+  "cpu_count": 8,
+  "cpu_count_logical": 16,
+  "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "524287995904",
+      "used": "266969702400"
+    }
+  },
+  "memory": {
+    "total": "16964685824"
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 3060 Laptop GPU",
+      "memoryTotal": "6442450944",
+      "cudaCores": 3840,
+      "architecture": "Ampere",
+      "uuid": "GPU-5cfd11f1-869f-97a9-93ba-aa0f1660e0dc"
+    }
+  ],
+  "cudaVersion": "13.0",
+  "writerId": "6u2cal0qif3g6wcwr9n406ec5jrshewu"
+}

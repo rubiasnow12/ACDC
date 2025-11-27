@@ -15,14 +15,18 @@ from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau
 import datetime
 import monai.transforms as mt
 from torchmetrics import IoU, F1
-from attn_unet_2d import AttU_Net2D
-from unet_2d import Unet_2d
+import sys
+import os
+# 将项目根目录加入路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from models.attn_unet_2d import AttU_Net2D
+from models.unet_2d import Unet_2d
 from data_2d import train_loader_ACDC, val_loader_ACDC
 from monai.losses.dice import DiceLoss, DiceCELoss
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator as ea
-import os
 import matplotlib.pyplot as plt
 from pathlib import Path
+from pytorch_lightning.loggers import WandbLogger
 
 # Manual seeding
 torch.manual_seed(42)
@@ -163,27 +167,27 @@ splits = KFold(n_splits=k_folds, shuffle=True, random_state=42)
 concatenated_dataset = train_loader_ACDC(transform=None, train_index=None)
 
 #  paths to store the checkpoints
-if not os.path.exists(r"../unet/checkpoints"):
-    os.makedirs(r"../unet/checkpoints")
-checkpoint_path = "../unet/checkpoints"
+if not os.path.exists(r"./unet/checkpoints"):
+    os.makedirs(r"./unet/checkpoints")
+checkpoint_path = "./unet/checkpoints"
 
-if not os.path.exists(r"../unet/tb_logs"):
-    os.makedirs(r"../unet/tb_logs")
-tb_path = "../unet/tb_logs"
+if not os.path.exists(r"./unet/tb_logs"):
+    os.makedirs(r"./unet/tb_logs")
+tb_path = "./unet/tb_logs"
 
-if not os.path.exists(r"../unet/csv_logs"):
-    os.makedirs(r"../unet/csv_logs")
-csv_path = "../unet/csv_logs"
+if not os.path.exists(r"./unet/csv_logs"):
+    os.makedirs(r"./unet/csv_logs")
+csv_path = "./unet/csv_logs"
 
 #  Temporarily store the validated image and ground truth plots --> to be moved to the respective folders
-if not os.path.exists(r'../unet/val_images_temp_2d/'):
-    os.makedirs(r'../unet/val_images_temp_2d/')
-val_path = r'../unet/val_images_temp_2d/'
+if not os.path.exists(r'./unet/val_images_temp_2d/'):
+    os.makedirs(r'./unet/val_images_temp_2d/')
+val_path = r'./unet/val_images_temp_2d/'
 
 # Save the validation images and ground truths
-if not os.path.exists(r'../unet/val_images_save_2d/'):
-    os.makedirs(r'../unet/val_images_save_2d/')
-image_path = r'../unet/val_images_save_2d/'
+if not os.path.exists(r'./unet/val_images_save_2d/'):
+    os.makedirs(r'./unet/val_images_save_2d/')
+image_path = r'./unet/val_images_save_2d/'
 
 
 # pad the images so that they are divisible by 16
@@ -459,9 +463,30 @@ def run_training():
         tensorboard_logger = TensorBoardLogger(tb_path, name=name)
         # CSV logger
         csv_logger = CSVLogger(csv_path, name=name)
-        # Trainer for training
-        trainer = Trainer(max_epochs=max_epochs, callbacks=[early_stop_callback, checkpoint_callback],
-                          gpus=1, logger=[tensorboard_logger, csv_logger], fast_dev_run=False, log_every_n_steps=2)
+
+        # --- 新增 WandB Logger ---
+        wandb_logger = WandbLogger(
+            project="ACDC_Uncertainty_2D", # 项目名称
+            name=name,                     # 实验名称 (如 UNet2D_Fold_1)
+            config={                       # 记录超参数
+                "learning_rate": learning_rate,
+                "batch_size": batch_size_train,
+                "dropout": drop_rate,
+                "fold": fold + 1
+            },
+            log_model=True                 # 自动上传最佳模型（可选）
+        )
+        
+        # 修改 Trainer
+        trainer = Trainer(
+            max_epochs=max_epochs, 
+            callbacks=[early_stop_callback, checkpoint_callback],
+            gpus=1, 
+            # 把 wandb_logger 加进去
+            logger=[tensorboard_logger, csv_logger, wandb_logger], 
+            fast_dev_run=False, 
+            log_every_n_steps=2
+        )
         # Training the model
         trainer.fit(model, train_dataloader=training_data, val_dataloaders=validation_data)
 
@@ -470,25 +495,25 @@ def run_training():
         model = model.load_from_checkpoint(best_model_path)
         model.eval().cuda()
         fname = str(model_choice) + "_Best_" + str(drop_rate) + "_Fold_" + str(fold + 1)
-        if not os.path.exists(r'../unet/best_models/'):
-            os.makedirs(r'../unet/best_models/')
-        torch.save(model, str(Path('../unet/best_models/', fname + '.pt')))
+        if not os.path.exists(r'./unet/best_models/'):
+            os.makedirs(r'./unet/best_models/')
+        torch.save(model, str(Path('./unet/best_models/', fname + '.pt')))
 
         # Folders to save the validation images for each fold
-        if not os.path.exists(os.path.join(r'../unet/', name, f"{fold + 1}_Fold")):
-            os.makedirs(os.path.join(r'../unet/', name, f"{fold + 1}_Fold"))
-        val_images_path = os.path.join(r'../unet/', name, f"{fold + 1}_Fold")
+        if not os.path.exists(os.path.join(r'./unet/', name, f"{fold + 1}_Fold")):
+            os.makedirs(os.path.join(r'./unet/', name, f"{fold + 1}_Fold"))
+        val_images_path = os.path.join(r'./unet/', name, f"{fold + 1}_Fold")
 
         #  Move the validated images to the respective folders
         for filename in glob.glob(os.path.join(val_path, '*.*')):
             shutil.move(filename, val_images_path)
 
         # Save plots --> Loss, IoU and Dice
-        plot_out_path = str(Path(r"../unet/Plots/", name))
+        plot_out_path = str(Path(r"./unet/Plots/", name))
         if not os.path.exists(plot_out_path):
             os.makedirs(plot_out_path)
 
-        event_acc = ea(str(Path(r"../unet/tb_logs/", name, "version_0")))
+        event_acc = ea(str(Path(r"./unet/tb_logs/", name, "version_0")))
         event_acc.Reload()
 
         _, _, training_loss = zip(*event_acc.Scalars('avg_train_loss'))
