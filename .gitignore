@@ -13,3 +13,5 @@ Cardiac_Segmentation_ACDC/
 *.zip
 .python-version
 unet/
+wandb/
+
