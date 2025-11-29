@@ -9,7 +9,7 @@ data/raw/
 Cardiac_Segmentation_ACDC/
 # Virtual environments
 .venv
-
+.idea/
 *.zip
 .python-version
 unet/
