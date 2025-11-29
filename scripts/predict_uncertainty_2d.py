@@ -26,7 +26,7 @@ project_root = os.path.abspath(os.path.join(current_dir, '..'))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-# 尝试导入模型（根据您的文件名可能需要微调）
+# 尝试导入模型（根据文件名可能需要微调）
 try:
     from models.attn_unet_2d import AttU_Net2D
     from models.unet_2d import Unet_2d
@@ -99,7 +99,7 @@ def save_nifti(data, affine, path):
     nib.save(nifti_img, path)
 
 # -------------------------------------------------------------------------
-# 3. 高级可视化与统计函数 (新功能)
+# 3. 高级可视化与统计函数 
 # -------------------------------------------------------------------------
 
 def normalize_map(m, cap_percentile=95):
@@ -220,7 +220,7 @@ def UnPad_images(image, indices, org_shape):
     return image[:, :, xx:xx + h, yy:yy + w]
 
 # -------------------------------------------------------------------------
-# [新增] 修复 torch.load 找不到 Train2D 的问题
+#  修复 torch.load 找不到 Train2D 的问题
 # 必须定义这个类，以便 pickle 能正确反序列化加载模型
 # -------------------------------------------------------------------------
 class Train2D(pl.LightningModule):
@@ -379,7 +379,7 @@ def run_inference():
                 method_name=method_name
             )
 
-            # [新增] WandB 日志记录
+            #  WandB 日志记录
             if args.use_wandb:
                 # 定义类别标签 (根据 ACDC 数据集)
                 class_labels = {0: "BG", 1: "RV", 2: "MYO", 3: "LV"}

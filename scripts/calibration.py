@@ -61,15 +61,15 @@ class ModelWithTemperature(nn.Module):
                     input = input.float()
                     label = label.long().to(device).squeeze(1)
 
-                # 2. [关键修改] Padding: 确保输入是 16 的倍数
+                # 2.  Padding: 确保输入是 16 的倍数
                 input_padded, pad_indices = Pad_images(input)
                 input_padded = input_padded.to(device)
                 
                 # 3. 模型推理
                 logits_padded = self.model(input_padded)
                 
-                # 4. [关键修改] Unpadding: 恢复到原始尺寸，以便和 Label 对齐
-                # 注意：UnPad 需要原始输入的 shape (B, C, H, W)，这里我们假设 logits 通道数不变，只恢复 H, W
+                # 4.  Unpadding: 恢复到原始尺寸，以便和 Label 对齐
+                # 注意：UnPad 需要原始输入的 shape (B, C, H, W)，这里假设 logits 通道数不变，只恢复 H, W
                 # 构造一个 shape 传给 UnPad_images: (Batch, Channel, Orig_H, Orig_W)
                 orig_shape = (logits_padded.shape[0], logits_padded.shape[1], input.shape[2], input.shape[3])
                 logits = UnPad_images(logits_padded, pad_indices, orig_shape)
@@ -179,7 +179,7 @@ def run_calibration():
     
     # 3. 准备验证数据
     # 注意：这里需要根据 fold 获取对应的 validation set
-    # 由于你的 data_2d.py 需要 split 索引，这里我们简单模拟一下或复用 split 逻辑
+    # 由于 data_2d.py 需要 split 索引，这里简单模拟一下或复用 split 逻辑
     # 为简化，这里假设已经有办法获取 val_loader，或者使用下面的模拟加载
     from sklearn.model_selection import KFold
     import numpy as np
@@ -194,7 +194,7 @@ def run_calibration():
         mt.ToTensorD(keys=["image", "mask"], allow_missing_keys=False)
     ])
     
-    # 使用你项目中的 loader
+    # 使用项目中的 loader
     val_loader = val_loader_ACDC(val_index=val_idx, transform=val_transform)
     # 必须使用 batch_size=1 避免 padding 问题干扰校准，或者自己处理 padding
     val_dataloader = DataLoader(val_loader, batch_size=1, shuffle=False)
@@ -203,7 +203,7 @@ def run_calibration():
     optimal_T = scaled_model.set_temperature(val_dataloader, device)
     
     # 5. 保存结果
-    # 你可以选择保存整个包装后的模型，或者只保存 T 值
+    # 可以选择保存整个包装后的模型，或者只保存 T 值
     save_path = args.model_path.replace(".pt", "_calibrated.pt")
     torch.save(scaled_model, save_path)
     print(f"Calibrated model saved to {save_path}")
