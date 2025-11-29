@@ -7,7 +7,7 @@ import argparse
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 import monai.transforms as mt
-
+import pytorch_lightning as pl
 # 导入你的项目模块
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -34,9 +34,7 @@ class ModelWithTemperature(nn.Module):
         核心逻辑：logits / temperature
         如果是分割任务，temperature 会广播到每个像素
         """
-        # 限制 T >= 0.01 以防止除零或数值不稳定
-        temperature = self.temperature.unsqueeze(1).unsqueeze(1).unsqueeze(1).expand(logits.size())
-        return logits / temperature
+        return logits / self.temperature
 
     def set_temperature(self, valid_loader, device):
         """
@@ -54,24 +52,29 @@ class ModelWithTemperature(nn.Module):
         print("Collecting logits on validation set...")
         with torch.no_grad():
             for batch in tqdm(valid_loader):
+                # 1. 准备数据
                 if isinstance(batch, dict):
-                    input = batch["image"].float().to(device)
-                    # 确保 label 维度正确: (B, 1, H, W) -> (B, H, W)
+                    input = batch["image"].float() # 先保持在 CPU 方便 Pad 处理，或者直接转 tensor
                     label = batch["mask"].long().to(device).squeeze(1)
-                else: # 兼容可能的 list 返回
+                else: 
                     input, label = batch
-                    input = input.float().to(device)
+                    input = input.float()
                     label = label.long().to(device).squeeze(1)
 
-                # Pad image to 16 divisible (适配你的网络要求)
-                # 这里简单复用你项目中的 pad 逻辑，或者直接 resize
-                # 为简化代码，这里假设输入尺寸已经可以通过 batch_size=1 处理
-                # 如果显存不够，可能需要裁剪或逐个处理
+                # 2. [关键修改] Padding: 确保输入是 16 的倍数
+                input_padded, pad_indices = Pad_images(input)
+                input_padded = input_padded.to(device)
                 
-                logits = self.model(input)
+                # 3. 模型推理
+                logits_padded = self.model(input_padded)
                 
-                # 展平以便存储: (B, C, H, W) -> (B, C, H*W) -> permute -> (B*H*W, C)
-                # 这样做是为了节省显存并方便计算 CrossEntropy
+                # 4. [关键修改] Unpadding: 恢复到原始尺寸，以便和 Label 对齐
+                # 注意：UnPad 需要原始输入的 shape (B, C, H, W)，这里我们假设 logits 通道数不变，只恢复 H, W
+                # 构造一个 shape 传给 UnPad_images: (Batch, Channel, Orig_H, Orig_W)
+                orig_shape = (logits_padded.shape[0], logits_padded.shape[1], input.shape[2], input.shape[3])
+                logits = UnPad_images(logits_padded, pad_indices, orig_shape)
+                
+                # 5. 收集结果
                 logits_list.append(logits.permute(0, 2, 3, 1).reshape(-1, logits.shape[1]).cpu())
                 labels_list.append(label.flatten().cpu())
 
@@ -105,6 +108,25 @@ class ModelWithTemperature(nn.Module):
 
         return self.temperature.item()
 
+# 添加这两个函数来处理尺寸问题
+def Pad_images(image):
+    b, c, h, w = image.shape
+    new_x = (16 - (h % 16)) + h
+    new_y = (16 - (w % 16)) + w
+    # 如果已经是 16 的倍数，直接返回
+    if new_x == h and new_y == w:
+        return image, (0, 0)
+        
+    result = torch.full((b, c, new_x, new_y), image.min(), dtype=image.dtype)
+    xx = (new_x - h) // 2
+    yy = (new_y - w) // 2
+    result[:, :, xx:xx + h, yy:yy + w] = image
+    return result, (xx, yy)
+
+def UnPad_images(image, indices, org_shape):
+    b, c, h, w = org_shape
+    xx, yy = indices
+    return image[:, :, xx:xx + h, yy:yy + w]
 class _ECELoss(nn.Module):
     """
     计算 ECE (Expected Calibration Error) 的辅助类
@@ -130,6 +152,15 @@ class _ECELoss(nn.Module):
                 ece += torch.abs(avg_confidence_in_bin - accuracy_in_bin) * prop_in_bin
         return ece
 
+class Train2D(pl.LightningModule):
+    def __init__(self):
+        super(Train2D, self).__init__()
+        # 这里可以是空的，因为 torch.load 会直接把保存的 self.net 覆盖回来
+        self.net = None 
+
+    def forward(self, x):
+        return self.net(x)
+    
 def run_calibration():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, required=True, help="Path to the best model .pt file")
@@ -149,13 +180,13 @@ def run_calibration():
     # 3. 准备验证数据
     # 注意：这里需要根据 fold 获取对应的 validation set
     # 由于你的 data_2d.py 需要 split 索引，这里我们简单模拟一下或复用 split 逻辑
-    # 为简化，这里假设你已经有办法获取 val_loader，或者使用下面的模拟加载
+    # 为简化，这里假设已经有办法获取 val_loader，或者使用下面的模拟加载
     from sklearn.model_selection import KFold
     import numpy as np
     
     # 简单的复用逻辑：重新生成一次 split 拿到 val_idx
     # 警告：这依赖于 random_state 一致，确保和训练时一样
-    dataset_len = 100 # 假设 ACDC 有 100 个病人，需要根据实际情况修改
+    dataset_len = 100 # ACDC 有 100 个病人
     splits = KFold(n_splits=5, shuffle=True, random_state=42) # 必须和 train_2d.py 一致
     train_idx, val_idx = list(splits.split(np.arange(dataset_len)))[args.fold - 1]
     

@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 from torchmetrics.functional import dice_score
 import torch.nn.functional as F
 import wandb
+import pytorch_lightning as pl
 # -------------------------------------------------------------------------
 # 1. 路径修复与模型导入
 # -------------------------------------------------------------------------
@@ -218,6 +219,19 @@ def UnPad_images(image, indices, org_shape):
     xx, yy = indices
     return image[:, :, xx:xx + h, yy:yy + w]
 
+# -------------------------------------------------------------------------
+# [新增] 修复 torch.load 找不到 Train2D 的问题
+# 必须定义这个类，以便 pickle 能正确反序列化加载模型
+# -------------------------------------------------------------------------
+class Train2D(pl.LightningModule):
+    def __init__(self):
+        super(Train2D, self).__init__()
+        # 这里可以是空的，因为 torch.load 会直接把保存的 self.net 覆盖回来
+        self.net = None 
+
+    def forward(self, x):
+        return self.net(x)
+    
 def run_inference():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/config.yaml", help="Path to config file")
@@ -339,7 +353,7 @@ def run_inference():
             dice_val = dice_score(
                 pred_mask.cpu().unsqueeze(0).unsqueeze(0), 
                 mask.cpu().unsqueeze(0).unsqueeze(0),
-                bg=True, no_fg_score=0.0, reduction='mean'
+                bg=True, no_fg_score=0.0, reduction='elementwise_mean'
             ).item()
 
             base_name = f"case_{idx:03d}"

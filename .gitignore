@@ -14,4 +14,5 @@ Cardiac_Segmentation_ACDC/
 .python-version
 unet/
 wandb/
+outputs/
 

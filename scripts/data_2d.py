@@ -92,18 +92,28 @@ class ACDC_2D(Dataset):
 tar_shape = [352, 352]
 crop_shape = [224, 224]
 
+# 获取当前脚本(data_2d.py)所在的绝对路径
+current_script_path = Path(__file__).resolve()
 
-def train_loader_ACDC(train_index, data_path=r"E:\mssb\project\data\raw\ACDC\database\training", transform=None):
+# 脚本在 scripts/ 目录下，所以 .parent 是 scripts，.parent.parent 是项目根目录
+project_root = current_script_path.parent.parent
+
+# 拼接通用的相对路径 (兼容 Windows/Linux/Mac)
+# 注意：这里假设数据结构保持为 project/data/raw/ACDC...
+default_train_path = project_root / "data" / "raw" / "ACDC" / "database" / "training"
+default_test_path = project_root / "data" / "raw" / "ACDC" / "database" / "testing"
+
+def train_loader_ACDC(train_index, data_path=default_train_path, transform=None):
     train_loader = ACDC_2D(source=data_path, Transform=transform, ind=train_index)
     return train_loader
 
 
-def val_loader_ACDC(val_index, data_path=r"E:\mssb\project\data\raw\ACDC\database\training", transform=None):
+def val_loader_ACDC(val_index, data_path=default_train_path, transform=None):
     val_loader = ACDC_2D(source=data_path, Transform=transform, ind=val_index)
     return val_loader
 
 
-def test_loader_ACDC(test_index, data_path=r"E:\mssb\project\data\raw\ACDC\database\testing", transform=None):
+def test_loader_ACDC(test_index, data_path=default_test_path, transform=None):
     test_loader = ACDC_2D(source=data_path, Transform=transform, ind=test_index)
     return test_loader
 

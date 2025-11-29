@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import monai
 import torch
@@ -10,11 +11,13 @@ import numpy as np
 from torch import nn
 import nibabel as nib
 from pathlib import Path
-from unet_3d import Unet_3d
+# 将项目根目录加入路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from model.unet_3d import Unet_3d
 import monai.transforms as mt
 import pytorch_lightning as pl
 from torchmetrics import IoU, F1
-from attn_unet_3d import Attn_UNet3d
+from model.attn_unet_3d import Attn_UNet3d
 from matplotlib import pyplot as plt
 from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
