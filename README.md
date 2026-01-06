@@ -1,117 +1,120 @@
+
 # Cardiac Segmentation with Uncertainty Estimation & Reliability Analysis
 
-这是一个基于 ACDC 数据集的 2D 心脏分割项目，集成了**不确定性估计 (Deep Ensemble / MC Dropout)** 和 **可靠性校准 (Temperature Scaling)**。项目支持 WandB 在线可视化，可直观分析模型在高风险区域的表现。
+这是一个基于 ACDC 数据集的 2D/3D 心脏分割项目，重点集成了**贝叶斯深度学习 (Probabilistic U-Net)**、**多种不确定性估计方法 (Deep Ensemble / MC Dropout)** 以及**临床评估导向的统计分析与可视化**。
 
 ##  功能特性
 
-  * **基础分割**: 基于 U-Net / Attention U-Net 的准确分割。
-  * **不确定性估计**:
-      * **Deep Ensemble**: 集成 5 折交叉验证模型，生成高质量不确定性热力图。
-      * **MC Dropout**: 单模型多次采样估计。
-  * **可靠性校准**: 使用 Temperature Scaling 优化模型概率输出（ECE 指标）。
-  * **高级可视化**: 集成 WandB，提供交互式分割图、不确定性热力图及统计报表。
+* **多样化分割模型**:
+* 标准模型：U-Net, Attention U-Net (支持 2D/3D)。
+* **贝叶斯概率模型**: 集成 **Probabilistic U-Net**，通过潜变量空间建模预测的多样性。
 
-##  环境依赖
 
-请确保安装以下依赖库：
+* **多维度不确定性估计**:
+* **Deep Ensemble**: 集成 5 折交叉验证模型提供鲁棒的不确定性估计。
+* **MC Dropout**: 推理阶段通过 Dropout 采样获取模型预测的变异性。
+* **Probabilistic Sampling**: 贝叶斯潜空间采样，学习复杂的条件概率分布。
 
-```bash
-pip install -r requirements.txt
-```
 
-主要依赖：`torch`, `monai`, `pytorch-lightning`, `wandb`, `torchmetrics`, `matplotlib`
+* **可靠性校准**: 使用 **Temperature Scaling** 优化预测概率，降低预期校准误差 (ECE)。
+* **统计分析与评估**:
+* 计算 Dice, HD95 (95% 豪斯多夫距离) 及 ECE 指标。
+* **错误检测分析**: 绘制 ROC 和 PR 曲线，评估不确定性作为错误检测器的能力。
+* **相关性研究**: 分析分割质量 (Dice) 与不确定性 (Entropy) 的相关性，验证临床预警价值。
 
-##  数据准备
 
-1.  请将 ACDC 数据集放置在项目根目录下的 `data/raw/ACDC/database` 文件夹中：
 
-    ```text
-    project/
-    ├── data/
-    │   └── raw/
-    │       └── ACDC/
-    │           └── database/
-    │               ├── training/   <-- 包含 patientXXX 文件夹
-    │               └── testing/
-    ```
+##  高级可视化与统计
 
-2.  生成数据划分文件 (`splits.pkl`)：
+项目提供了丰富的可视化和统计工具，帮助理解模型决策：
 
-    ```bash
-    python scripts/split_patients.py
-    ```
+### 1. 三视图可视化
 
-    *这将在 `data/` 目录下生成划分文件，确保 5 折交叉验证的一致性。*
+脚本会自动生成每个病例的对比图：
+
+* **View 1: 轮廓对比**: 绿色 (GT) 与黄色 (预测) 轮廓叠加，直观展示分割偏差。
+* **View 2: 不确定性叠加**: 将热力图叠加在原图上，并用红框标记高风险区域（Top 5% 不确定性区域）。
+* **View 3: 热力图**: 纯不确定性分布图（Entropy/Variance），定位模型困惑区域。
+
+### 2. 统计图表
+
+* **可靠性曲线 (Reliability Diagram)**: 评估预测置信度与实际准确率的匹配程度。
+* **相关性散点图**: 绘制 Dice vs. Mean Entropy，并进行回归分析。
+* **不确定性分布图**: 统计所有病例的平均熵分布。
 
 ##  快速开始
 
-### 1\. 模型训练 (5-Fold Cross Validation)
-
-运行训练脚本，这将自动进行 5 折交叉验证并保存最佳模型：
+### 1. 环境准备
 
 ```bash
-python scripts/train_2d.py --model_choice UNet2D_Attention --maximum_epochs 400
+pip install -r requirements.txt
+
 ```
 
-  * **输出**: 模型权重保存在 `unet/best_models/`。
-  * **日志**: TensorBoard 日志保存在 `unet/tb_logs/`，WandB 日志（如配置）在线可见。
+### 2. 数据划分
 
-### 2\. 不确定性估计与推理 (Uncertainty Estimation)
-
-利用训练好的模型（支持 Deep Ensemble 模式）进行推理，生成分割图和不确定性图。
+确保 ACDC 数据集位于 `data/raw/`，然后运行：
 
 ```bash
-python scripts/predict_uncertainty_2d.py \
-    --model_path unet/best_models \
-    --output_dir outputs/ensemble_results \
-    --use_wandb
+python scripts/split_patients.py  # 基于病理类别进行分层抽样
+
 ```
 
-  * **--model\_path**: 指向包含 `.pt` 模型文件的目录。
-  * **--use\_wandb**: 强烈推荐开启，可在 WandB 网页端查看交互式热力图。
-  * **Deep Ensemble**: 如果目录下有多个 Fold 的模型，脚本会自动识别并开启集成模式。
+### 3. 模型训练
 
-**结果解读 (WandB / Output Dir)**:
+* **标准/注意力模型**:
+```bash
+python scripts/train_2d.py --model_choice UNet2D_Attention
 
-  * **Pred vs GT**: 黄色轮廓为预测，绿色轮廓为金标准。
-  * **Uncertainty Map**: 颜色越亮（黄/红）表示模型越不确定（通常在边界处）。
-  * **High Risk Area**: 红色标记区域为模型极其不确定的高风险区。
+```
 
-### 3\. 可靠性校准 (Calibration)
 
-如果模型存在“过度自信”问题（Dice 高但 ECE 高），使用此脚本进行温度缩放校准。
+* **贝叶斯概率模型 (Probabilistic)**:
+```bash
+python scripts/train_2d_probabilistic.py --model_choice ProbabilisticUNet
+
+```
+
+
+
+### 4. 推理、不确定性估计与可视化
+
+* **贝叶斯模型推理**:
+```bash
+python scripts/predict_uncertainty_2d_probabilistic.py --samples 20 --use_wandb
+
+```
+
+
+* **集成/MC Dropout 推理**:
+```bash
+python scripts/predict_uncertainty_2d.py --model_path unet/best_models --use_wandb
+
+```
+
+
+
+### 5. 可靠性校准
+
+若需降低 ECE 指标，运行：
 
 ```bash
-python scripts/calibration.py \
-    --model_path unet/best_models/UNet2D_Attention_Best_0.3_Fold_1.pt \
-    --fold 1
+python scripts/calibration.py --model_path path/to/model.pt --fold 1
+
 ```
 
-  * 脚本会自动计算最佳温度 $T$。
-  * 输出校准前后的 NLL (Negative Log Likelihood) 和 ECE (Expected Calibration Error)。
-  * 生成校准后的模型文件 `*_calibrated.pt`。
-
-##  配置文件
-
-主要参数位于 `configs/config.yaml`，你可以修改：
-
-  * `uncertainty_estimation`: 选择 `deep_ensemble` 或 `mc_dropout`。
-  * `training`: 学习率、Batch Size 等。
-
-##  目录结构说明
+##  目录结构
 
 ```text
-.
-├── configs/             # 配置文件
-├── data/                # 数据存放区
-├── models/              # 网络结构定义 (U-Net, Attn U-Net)
-├── scripts/             # 核心脚本
-│   ├── train_2d.py              # 训练入口
-│   ├── predict_uncertainty_2d.py# 不确定性推理
-│   ├── calibration.py           # 可靠性校准
-│   ├── data_2d.py               # 数据加载 (Pathlib 增强版)
+├── models/
+│   ├── probabilistic_unet_2d.py  # 贝叶斯潜变量模型
+│   ├── attn_unet_2d.py           # 注意力机制 U-Net
 │   └── ...
-├── unet/                # 训练产出 (权重, 日志)
-└── outputs/             # 推理产出 (可视化图表)
-```
+├── scripts/
+│   ├── predict_uncertainty_2d_probabilistic.py # 贝叶斯采样与高级可视化
+│   ├── uncertainty_utils.py      # 统计绘图与指标计算工具
+│   ├── calibration.py            # 温度缩放校准
+│   └── ...
+└── outputs/                      # 存储 final_metrics.csv 及统计图表
 
+```
