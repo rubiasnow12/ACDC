@@ -106,15 +106,36 @@ python scripts/calibration.py --model_path path/to/model.pt --fold 1
 ##  目录结构
 
 ```text
-├── models/
-│   ├── probabilistic_unet_2d.py  # 贝叶斯潜变量模型
-│   ├── attn_unet_2d.py           # 注意力机制 U-Net
-│   └── ...
-├── scripts/
-│   ├── predict_uncertainty_2d_probabilistic.py # 贝叶斯采样与高级可视化
-│   ├── uncertainty_utils.py      # 统计绘图与指标计算工具
-│   ├── calibration.py            # 温度缩放校准
-│   └── ...
-└── outputs/                      # 存储 final_metrics.csv 及统计图表
+ACDC-Cardiac-Segmentation/
+├── configs/
+│   └── config.yaml                   # 项目全局配置（数据路径、超参数、不确定性方法选择等）
+├── data/
+│   └── splits.pkl                    # 存储划分好的训练、验证和测试集病人 ID
+├── models/                           # 深度学习模型定义
+│   ├── unet_2d.py                    # 标准 2D U-Net 模型
+│   ├── unet_3d.py                    # 标准 3D U-Net 模型
+│   ├── attn_unet_2d.py               # 带有注意力机制的 2D U-Net
+│   ├── attn_unet_3d.py               # 带有注意力机制的 3D U-Net
+│   └── probabilistic_unet_2d.py      # 贝叶斯概率 U-Net (Probabilistic U-Net)
+├── scripts/                          # 核心功能脚本
+│   ├── data_2d.py                    # 2D 数据加载器，支持切片提取与归一化
+│   ├── data_3d.py                    # 3D 数据加载器，处理 NIfTI 卷数据
+│   ├── prepare_monai_dataloaders.py  # 基于 MONAI 框架的高级数据预处理流水线
+│   ├── split_patients.py             # 按照病理类别进行分层抽样，生成数据划分
+│   ├── train_2d.py                   # 2D 模型的训练脚本（支持 5 折交叉验证）
+│   ├── train_3d.py                   # 3D 模型的训练脚本
+│   ├── train_2d_probabilistic.py     # 贝叶斯概率模型的训练脚本 (最小化 ELBO)
+│   ├── predict_2d.py                 # 2D 模型标准推理脚本
+│   ├── predict_3d.py                 # 3D 模型标准推理脚本
+│   ├── predict_uncertainty_2d.py     # 集成学习 (Ensemble) 或 MC Dropout 的不确定性估计
+│   ├── predict_uncertainty_2d_probabilistic.py # 贝叶斯潜空间采样与高级可视化（三视图）
+│   ├── calibration.py                # 使用温度缩放 (Temperature Scaling) 进行模型校准
+│   ├── compare_results.py            # 用于对比不同模型指标（如 Dice）的统计检验工具
+│   └── uncertainty_utils.py          # 工具函数库：计算 ECE, HD95, 熵及绘制可靠性曲线
+├── main.py                           # 项目入口示例脚本
+├── requirements.txt                  # 项目依赖包列表
+├── pyproject.toml / uv.lock          # Python 项目元数据及依赖锁定文件
+├── .python-version                   # 指定 Python 版本 (3.9)
+└── README.md                         # 项目功能特性、快速开始与可视化说明文档
 
 ```
